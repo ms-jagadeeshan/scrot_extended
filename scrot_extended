@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+from signal import signal, SIGINT
+from sys import exit
+import sys
+from re import findall
+import os
+import datetime
+import time
+import subprocess
+from getopt import getopt
+from PIL import Image
+from imagehash import dhash
+
+
+home = os.environ["HOME"]
+pwd = os.environ["PWD"]
+k = 1
+config = {
+    "home": home,
+    "pwd": pwd,
+    "crop_coords": "",
+    "classcoords": {
+        "sample": ["1", "1", "500", "400"]
+    },
+    "browser": "waterfox",  # waterfox, firefox, 'google chrome' etc..
+    "classcode": "default",   # default image and folder name is default
+    # coordinate, and its format is x,y,width,height
+    "coords": [],
+    "iscrop": True,
+    # default imagehash diff allowed, higher the value, higher the difference is allowed
+    "cutoff": 5,
+    "delay": 5,             # delay between taking screenshots
+    "silent": False,
+    "single": False,
+    "target_dir": home+"/college4th_sem/screenshots",
+    "tmp_dir": home+"/.scrot_images",
+    "verbose": False
+}
+# Config to run this script
+
+
+def handler(signal_received, frame):
+    # Handle any cleanup here
+    print('\nBye👋')
+    exit(0)
+# Ctrl+C or SIGINT handler
+
+
+def clean():
+    tmp_dir = config.get("tmp_dir")
+    cmd3 = ['rm', '-r', '--verbose', tmp_dir]
+    response = input(f'This will remove all the files inside {tmp_dir}\n\
+Do you want to remove[y/N]?')
+    if response[0] in ['y', 'Y']:
+        if os.path.exists(tmp_dir):
+            subprocess.call(cmd3)
+    exit(0)
+# cleans the tmp_dir
+
+
+def version():
+    print("scrot_extended version 0.5")
+    exit(0)
+# prints version and exits
+
+
+def help():
+    cmds = ["$ scrot_extended --class probability --delay 4 --cutoff 5 -t 100,100,900,900",
+            "$ scrot_extended - -class probability", "$ scrot --single --autoselect 20,20,500,500"]
+    WB = "\033[97;1m"
+    ESC = "\033[0m"
+    print(
+        f"Usage : scrot_extended [-s][-a x-coord,y-coord,widht,height] [-c classname] [-d delay-time]\
+[-t x1,y1,x2,y2] [--clean] [--help] [--verbose]           \n\
+    -a, --autoselect <x,y,w,h>       non-interactively choose a rectangle of x,y,w,h(topleft x, y and width and height)\n\
+    -c, --class  <classname>         classname for creating folder and naming the screenshot\n\
+    -d, --delay <seconds>            delay time to take screenshot\n\
+    -s, --single                     takes single screenshot as sample to see\n\
+    -t --two-points <x1,y1,x2,y2>    non-interactively choose a rectangle of x1,y1,x2,y2(top left x,y and bottom right x,y)\n\
+    --cutoff <integer>               cutoff value to compare hash of two images,higher the value, higher the difference allowed(default:5)\n\
+    --clean                          cleans the temporary directory to store screenshots i.e ~/.scrot_images\n\
+    --help                           display this help and exit\n\
+    --silent                         no output, all are redirected to log file\n\
+    --verbose                        prints more info of execution\n\n\
+    --version                        output version information and exit\n\n\
+Examples:\n\
+    Takes screenshot every 4 seconds and saves if different than previous and saves the image in the folder probalility, cutoff=5 and\
+taking screenshot of rectangle shape, x1,y1 = 100,100 and x2,y2=900,900\n\
+    {WB+cmds[0]+ESC}\n\n\
+    Takes screenshot every 5(default) second, and stores in folder 'probability' and if screenshot coordinate defined in \
+config[\"classcoords\"] then uses it,else takes screenshot of entire window.\n\
+    Note: If --autoselect or --two-points specified, then it overrides the coordinates in config[\"classcoords\"] of code.\n\
+    {WB+cmds[1]+ESC}\n\n\
+    Takes screenshot once, and save it in current folder in the name of scrot_sample_image.png and \
+screenshot coordinate starts with (20,20) upto width of 500 and height of 500 pixels.\n\
+    {WB+cmds[2]+ESC}\n\n\
+    Tips: $ watch -n 1 'xdotool getmouselocation'     - To get mouse location\n", end=""
+    )
+    exit(0)
+# prints version and exit
+
+
+def single():
+    global config
+    img_out = config["pwd"]+"/scrot_sample_img.png"
+    if config["iscrop"] == True:
+        cmd = ["import", "-window", config["windowID"],
+               "-verbose", "-crop", config["crop_coords"], img_out]
+    else:
+        cmd = ["import", "-window", config["windowID"], "-verbose", img_out]
+    subprocess.call(cmd)
+    exit(0)
+# function takes single photo and save image in current folder and exit
+# useful to trial and error to find coordinates
+
+
+def getWindowID():
+    global config
+    getwid = ['xdotool', 'search', '--onlyvisible',
+              '--name', config["browser"]]
+    try:
+        test_str = str(subprocess.check_output(getwid))
+        res = [int(s) for s in findall(r'-?\d+\.?\d*',
+                                       test_str)]
+    except Exception as err:
+        print(f'Problem occured in getting window ID of your browser\n{err}')
+        exit(1)
+    return str(min(res))
+# gets window ID ans sends as string, if multiple id exist, then sends lowest id
+
+
+def configSetup():
+    global config
+    config["windowID"] = getWindowID()
+    coords = config["coords"]
+    classcode = config["classcode"]
+    if len(coords) == 0:
+        if classcode == "default":
+            config["iscrop"] = False
+        elif config["classcoords"].get(classcode) is None:
+            config["iscrop"] = False
+        else:
+            crop = coords[2]+"x"+coords[3]+"+"+coords[0]+"+"+coords[1]
+            config["crop_coords"] = crop
+    else:
+        crop = coords[2]+"x"+coords[3]+"+"+coords[0]+"+"+coords[1]
+        config["crop_coords"] = crop
+    out_dir = config["target_dir"] + classcode  # output directory
+    tmp_dir = config["tmp_dir"]  # temporary directory
+
+    # creating needed directories
+    for dr in [tmp_dir, out_dir]:
+        if not os.path.exists(dr):
+            os.makedirs(dr)
+# sets required variables
+
+
+def func(prev, img_in, img_out):
+    global config
+    if config["iscrop"]:
+        cmd = ["import", "-window", config["windowID"],
+               "-verbose", "-crop", config["crop_coords"], img_in]
+    else:
+        cmd = ["import", "-window", config["windowID"], "-verbose", img_in]
+    if config["verbose"]:
+        print(cmd)
+    subprocess.call(cmd)
+
+    if prev is not None:
+        hash0 = dhash(Image.open(prev))
+        hash1 = dhash(Image.open(img_in))
+        cutoff = config["cutoff"]
+        if hash0 - hash1 < cutoff:
+            print(f'[INFO]: Images are similar : Hash Diff = {hash0-hash1}')
+        else:
+            cmd1 = ["cp", img_in, img_out]
+            prev = img_in
+            print(
+                f'[INFO]: Images are not similar : Hash Diff = {hash0-hash1}')
+            subprocess.call(cmd1)
+    else:
+        cmd2 = ["cp", img_in, img_out]
+        subprocess.call(cmd2)
+        prev = img_in
+    return prev
+# function takes screenshot and compares with previous image and returns the path of pervious image
+
+
+def call_func():
+    global config
+    if config["verbose"]:
+        print(f'Configurations:\n{config}')
+    classcode = config["classcode"]
+    out_dir = config["target_dir"] + classcode  # output directory
+    tmp_dir = config["tmp_dir"]  # temporary directory
+
+    k = 1
+    prev = None
+    delay = config["delay"]
+    print('Running. Press CTRL-C to exit.')
+    while True:
+        now = datetime.datetime.now()
+        while True:
+            img_in = tmp_dir + "/"+"input_"+str(k)+".png"
+            if os.path.exists(img_in):
+                k = k+1
+            else:
+                break
+        filename = (classcode+now.strftime("_%Y-%m-%d_%H-%M-%S"))  # filename
+        img_out = out_dir+"/"+filename+".png"
+        prev = func(prev, img_in, img_out)
+        time.sleep(delay)
+# function calls func() in a while loop
+
+
+def parseArg():
+    global config
+    argv = sys.argv[1:]
+
+    try:
+        opts, args = getopt(
+            argv, "c:a:d:t:vs", ["class=", "autoselect=", "two-points=", "delay=", "cutoff=", "clean", "version", "help", "verbose", "silent", "single"])
+    except:
+        print("Error occured")
+
+    try:
+        for opt, arg in opts:
+            if opt in ['-c', '--class']:
+                config["classcode"] = arg
+            elif opt in ['-a', '--autoselect']:
+                coords = [str(s) for s in findall(r'-?\d+\.?\d*', arg)]
+                if len(coords) != 4:
+                    raise Exception(
+                        "scrot_extended: option '--autoselect' requires an argument\nUsage: scrotextended --auto_select x,y,w,h")
+            elif opt in ['-t', '--two-points']:
+                coords = [str(s) for s in findall(r'-?\d+\.?\d*', arg)]
+                if len(coords) == 4:
+                    coords[2] = str(int(coords[2]) - int(coords[0]))
+                    coords[3] = str(int(coords[3]) - int(coords[1]))
+                    config["coords"] = coords
+                else:
+                    raise Exception(
+                        "scrot_extended: option '--two-points' requires an argument\nUsage: scrotextended --two-points x1,y1,x2,y2")
+            elif opt in ['--help']:
+                help()
+            elif opt in ['-d', '--delay']:
+                config['delay'] = float(arg)
+            elif opt == '--silent':
+                config['silent'] = True
+            elif opt in 'cutoff':
+                config["cutoff"] = arg
+            elif opt in ['--version']:
+                version()
+            elif opt == '--clean':
+                clean()
+            elif opt in ['-v', '--verbose']:
+                config["verbose"] = True
+            elif opt in ['-s', '--single']:
+                config["single"] = True
+    except Exception as err:
+        print(err)
+        exit(1)
+# parse the arguments passed
+
+
+def main():
+    global config
+    parseArg()
+    configSetup()
+    if config["single"] == True:
+        single()
+    call_func()
+
+
+if __name__ == '__main__':
+    signal(SIGINT, handler)
+    main()
