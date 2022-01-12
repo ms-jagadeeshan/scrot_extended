@@ -32,7 +32,7 @@ config = {
     "delay": 5,             # delay between taking screenshots
     "silent": False,
     "single": False,
-    "target_dir": home+"/college/4th_sem/screenshots",
+    "target_dir": home+"/Pictures/screenshots",
     "tmp_dir": home+"/.scrot_images",
     "verbose": False
 }
