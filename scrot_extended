@@ -32,7 +32,7 @@ config = {
     "delay": 5,             # delay between taking screenshots
     "silent": False,
     "single": False,
-    "target_dir": home+"/college4th_sem/screenshots",
+    "target_dir": home+"/college/4th_sem/screenshots",
     "tmp_dir": home+"/.scrot_images",
     "verbose": False
 }
@@ -145,7 +145,7 @@ def configSetup():
     else:
         crop = coords[2]+"x"+coords[3]+"+"+coords[0]+"+"+coords[1]
         config["crop_coords"] = crop
-    out_dir = config["target_dir"] + classcode  # output directory
+    out_dir = config["target_dir"]+"/" + classcode  # output directory
     tmp_dir = config["tmp_dir"]  # temporary directory
 
     # creating needed directories
@@ -158,11 +158,18 @@ def configSetup():
 def func(prev, img_in, img_out):
     global config
     if config["iscrop"]:
-        cmd = ["import", "-window", config["windowID"],
-               "-verbose", "-crop", config["crop_coords"], img_in]
+        if config["verbose"]:
+            cmd = ["import", "-window", config["windowID"],
+                   "-verbose", "-crop", config["crop_coords"], img_in]
+        else:
+            cmd = ["import", "-window", config["windowID"],
+                   "-crop", config["crop_coords"], img_in]
     else:
-        cmd = ["import", "-window", config["windowID"], "-verbose", img_in]
-    if config["verbose"]:
+        if config["verbose"]:
+            cmd = ["import", "-window", config["windowID"], "-verbose", img_in]
+        else:
+            cmd = ["import", "-window", config["windowID"], img_in]
+    if config.get("debug"):
         print(cmd)
     subprocess.call(cmd)
 
@@ -186,18 +193,23 @@ def func(prev, img_in, img_out):
 # function takes screenshot and compares with previous image and returns the path of pervious image
 
 
+def info(out_dir):
+    print('Running. Press CTRL-C to exit.')
+    print(f'[INFO]: Saving images to {out_dir}')
+# printing info
+
+
 def call_func():
     global config
     if config["verbose"]:
         print(f'Configurations:\n{config}')
     classcode = config["classcode"]
-    out_dir = config["target_dir"] + classcode  # output directory
+    out_dir = config["target_dir"]+"/" + classcode  # output directory
     tmp_dir = config["tmp_dir"]  # temporary directory
-
+    info(out_dir)
     k = 1
     prev = None
     delay = config["delay"]
-    print('Running. Press CTRL-C to exit.')
     while True:
         now = datetime.datetime.now()
         while True:
