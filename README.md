@@ -1,5 +1,19 @@
 # scrot_extended
 
+## Prerequisite
+This program is written for Linux, and it needs `import` and `xdotool` command
+```sh
+# Debian based distros
+sudo apt-get install xdotool
+```
+And it uses `pillow` and `imagehash` python module
+Install it using,
+### Using pip
+```
+pip3 install pillow imagehash
+```
+###
+
 ## Installation
 ### User install
 ```bash
