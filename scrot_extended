@@ -6,6 +6,7 @@ from re import findall
 import os
 import datetime
 import time
+import json
 import subprocess
 from getopt import getopt
 from PIL import Image
@@ -22,7 +23,7 @@ config = {
     "classcoords": {
         "sample": ["1", "1", "500", "400"]
     },
-    "browser": "waterfox",  # waterfox, firefox, 'google chrome' etc..
+    "windowname": "waterfox",  # waterfox, firefox, 'google chrome' etc..
     "classcode": "default",   # default image and folder name is default
     # coordinate, and its format is x,y,width,height
     "coords": [],
@@ -34,7 +35,9 @@ config = {
     "single": False,
     "target_dir": home+"/Pictures/screenshots",
     "tmp_dir": home+"/.scrot_images",
-    "verbose": False
+    "verbose": False,
+    "debug": False,
+    "interactive": False
 }
 # Config to run this script
 
@@ -66,11 +69,15 @@ def version():
 
 def help():
     cmds = ["$ scrot_extended --class probability --delay 4 --cutoff 5 -t 100,100,900,900",
-            "$ scrot_extended - -class probability", "$ scrot --single --autoselect 20,20,500,500"]
+            "$ scrot_extended --class probability",
+            "$ scrot --single --autoselect 20,20,500,500",
+            "$ scrot_extended --select-window firefox --single",
+            "$ scrot_extended --iselect-window --single"]
+
     WB = "\033[97;1m"
     ESC = "\033[0m"
     print(
-        f"Usage : scrot_extended [-s][-a x-coord,y-coord,widht,height] [-c classname] [-d delay-time]\
+        f"Usage : scrot_extended [-s] [-a x-coord,y-coord,widht,height] [-c classname] [-d delay-time] \
 [-t x1,y1,x2,y2] [--clean] [--help] [--verbose]           \n\
     -a, --autoselect <x,y,w,h>       non-interactively choose a rectangle of x,y,w,h(topleft x, y and width and height)\n\
     -c, --class  <classname>         classname for creating folder and naming the screenshot\n\
@@ -81,6 +88,8 @@ def help():
     --clean                          cleans the temporary directory to store screenshots i.e ~/.scrot_images\n\
     --help                           display this help and exit\n\
     --silent                         no output, all are redirected to log file\n\
+    --select-window <window-name>    select window by name\
+    --iselect-window                 interactively select window\
     --verbose                        prints more info of execution\n\n\
     --version                        output version information and exit\n\n\
 Examples:\n\
@@ -94,6 +103,10 @@ config[\"classcoords\"] then uses it,else takes screenshot of entire window.\n\
     Takes screenshot once, and save it in current folder in the name of scrot_sample_image.png and \
 screenshot coordinate starts with (20,20) upto width of 500 and height of 500 pixels.\n\
     {WB+cmds[2]+ESC}\n\n\
+    Searches window by its name given and takes single screenshot and saves in current directory\n\
+    {WB+cmds[3]+ESC}\n\n\
+    You can select window interactively and takes single screenshot and saves in current directory\n\
+    {WB+cmds[4]+ESC}\n\n\
     Tips: $ watch -n 1 'xdotool getmouselocation'     - To get mouse location\n", end=""
     )
     exit(0)
@@ -109,6 +122,8 @@ def single():
     else:
         cmd = ["import", "-window", config["windowID"], "-verbose", img_out]
     subprocess.call(cmd)
+    cmd2 = ["xdg-open", img_out]
+    subprocess.call(cmd2)
     exit(0)
 # function takes single photo and save image in current folder and exit
 # useful to trial and error to find coordinates
@@ -116,15 +131,26 @@ def single():
 
 def getWindowID():
     global config
-    getwid = ['xdotool', 'search', '--onlyvisible',
-              '--name', config["browser"]]
+    res=[]
+    if config["interactive"]:
+        getwid = ['xdotool', 'selectwindow']
+    else:
+        getwid = ['xdotool', 'search', '--onlyvisible',
+                  '--name', config["windowname"]]
     try:
         test_str = str(subprocess.check_output(getwid))
         res = [int(s) for s in findall(r'-?\d+\.?\d*',
                                        test_str)]
-    except Exception as err:
-        print(f'Problem occured in getting window ID of your browser\n{err}')
-        exit(1)
+    except:
+        pass
+    if len(res) == 0:
+        print("No window found with given name, Please select the window manually")
+        getwid = ['xdotool', 'selectwindow']
+        test_str = str(subprocess.check_output(getwid))
+        res = [int(s) for s in findall(r'-?\d+\.?\d*',
+                                       test_str)]
+        if len(res) == 0:
+            raise Exception("No window found with given name")
     return str(min(res))
 # gets window ID ans sends as string, if multiple id exist, then sends lowest id
 
@@ -199,10 +225,19 @@ def info(out_dir):
 # printing info
 
 
+# def pretty(d, indent=0):
+#    for key, value in d.items():
+#       print('\t' * indent + str(key))
+#       if isinstance(value, dict):
+#          pretty(value, indent+1)
+#       else:
+#          print('\t' * (indent+1) + str(value))
+
 def call_func():
     global config
     if config["verbose"]:
-        print(f'Configurations:\n{config}')
+        print(f'Configurations:\n{json.dumps(config,indent=4)}')
+
     classcode = config["classcode"]
     out_dir = config["target_dir"]+"/" + classcode  # output directory
     tmp_dir = config["tmp_dir"]  # temporary directory
@@ -229,14 +264,18 @@ def parseArg():
     global config
     argv = sys.argv[1:]
 
+    if config["debug"]:
+        print(argv)
     try:
         opts, args = getopt(
-            argv, "c:a:d:t:vs", ["class=", "autoselect=", "two-points=", "delay=", "cutoff=", "clean", "version", "help", "verbose", "silent", "single"])
+            argv, "c:a:d:t:vs", ["class=", "autoselect=", "two-points=", "select-window=", "delay=", "cutoff=", "debug", "iselect-window", "clean", "version", "help", "verbose", "silent", "single"])
     except:
         print("Error occured")
 
     try:
         for opt, arg in opts:
+            if config["debug"]:
+                print(opt)
             if opt in ['-c', '--class']:
                 config["classcode"] = arg
             elif opt in ['-a', '--autoselect']:
@@ -263,6 +302,13 @@ def parseArg():
                 config["cutoff"] = arg
             elif opt in ['--version']:
                 version()
+            elif opt in ['--iselect-window']:
+                config["interactive"] = True
+            elif opt in ['--select-window']:
+                config["windowname"] = arg
+            elif opt in ['--debug']:
+                config["debug"] = True
+                config["verbose"] = True
             elif opt == '--clean':
                 clean()
             elif opt in ['-v', '--verbose']:
