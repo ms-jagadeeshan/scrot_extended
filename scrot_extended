@@ -131,7 +131,7 @@ def single():
 
 def getWindowID():
     global config
-    res=[]
+    res = []
     if config["interactive"]:
         getwid = ['xdotool', 'selectwindow']
     else:
@@ -283,6 +283,7 @@ def parseArg():
                 if len(coords) != 4:
                     raise Exception(
                         "scrot_extended: option '--autoselect' requires an argument\nUsage: scrotextended --auto_select x,y,w,h")
+                config["coords"] = coords
             elif opt in ['-t', '--two-points']:
                 coords = [str(s) for s in findall(r'-?\d+\.?\d*', arg)]
                 if len(coords) == 4:
