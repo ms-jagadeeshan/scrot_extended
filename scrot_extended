@@ -117,10 +117,11 @@ def single():
     global config
     img_out = config["pwd"]+"/scrot_sample_img.png"
     if config["iscrop"] == True:
-        cmd = ["import", "-window", config["windowID"],
+        cmd = ["import", "-silent", "-window", config["windowID"],
                "-verbose", "-crop", config["crop_coords"], img_out]
     else:
-        cmd = ["import", "-window", config["windowID"], "-verbose", img_out]
+        cmd = ["import", "-silent", "-window",
+               config["windowID"], "-verbose", img_out]
     subprocess.call(cmd)
     cmd2 = ["xdg-open", img_out]
     subprocess.call(cmd2)
@@ -185,16 +186,17 @@ def func(prev, img_in, img_out):
     global config
     if config["iscrop"]:
         if config["verbose"]:
-            cmd = ["import", "-window", config["windowID"],
+            cmd = ["import", "-silent", "-window", config["windowID"],
                    "-verbose", "-crop", config["crop_coords"], img_in]
         else:
-            cmd = ["import", "-window", config["windowID"],
+            cmd = ["import", "-silent", "-window", config["windowID"],
                    "-crop", config["crop_coords"], img_in]
     else:
         if config["verbose"]:
-            cmd = ["import", "-window", config["windowID"], "-verbose", img_in]
+            cmd = ["import", "-silent", "-window",
+                   config["windowID"], "-verbose", img_in]
         else:
-            cmd = ["import", "-window", config["windowID"], img_in]
+            cmd = ["import", "-silent", "-window", config["windowID"], img_in]
     if config.get("debug"):
         print(cmd)
     subprocess.call(cmd)
