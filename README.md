@@ -65,8 +65,9 @@ Usage : scrot_extended [-s] [-a x-coord,y-coord,widht,height] [-c classname] [-d
     --clean                          cleans the temporary directory to store screenshots i.e ~/.scrot_images
     --help                           display this help and exit
     --silent                         no output, all are redirected to log file
-    --select-window <window-name>    select window by name    --iselect-window                 interactively select window    --verbose                        prints more info of execution
-
+    --select-window <window-name>    select window by name    
+    --iselect-window                 interactively select window    
+    --verbose                        prints more info of execution
     --version                        output version information and exit
 
 Examples:
